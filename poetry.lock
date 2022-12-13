@@ -1,0 +1,28 @@
+[[package]]
+name = "dynaconf"
+version = "3.1.11"
+description = "The dynamic configurator for your Python Project"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.extras]
+all = ["configobj", "hvac", "redis", "ruamel.yaml"]
+configobj = ["configobj"]
+ini = ["configobj"]
+redis = ["redis"]
+test = ["codecov", "configobj", "django", "flake8", "flake8-debugger", "flake8-print", "flake8-todo", "flask (>=0.12)", "hvac", "pep8-naming", "pytest", "pytest-cov", "pytest-mock", "pytest-xdist", "python-dotenv", "radon", "redis", "toml"]
+toml = ["toml"]
+vault = ["hvac"]
+yaml = ["ruamel.yaml"]
+
+[metadata]
+lock-version = "1.1"
+python-versions = "^3.8"
+content-hash = "52746f1b53546d6a265e3967541a23c1e08fa8e59e7ccf035e7a3736fbb67715"
+
+[metadata.files]
+dynaconf = [
+    {file = "dynaconf-3.1.11-py2.py3-none-any.whl", hash = "sha256:87e0b3b12b5db9e8fb465e1f8c7fdb926cd2ec5b6d88aa7f821f316df93fb165"},
+    {file = "dynaconf-3.1.11.tar.gz", hash = "sha256:d9cfb50fd4a71a543fd23845d4f585b620b6ff6d9d3cc1825c614f7b2097cb39"},
+]
