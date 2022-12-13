@@ -1,9 +1,7 @@
 from __future__ import annotations
 import sys
-import time
 import socket
 import signal
-import threading
 
 from pixson import utils
 from pixson.protocolo import *
@@ -24,15 +22,6 @@ class Cliente:
         self.conectado = False
         self.relogio = 0
 
-    def atualizar_relogio_interno(self) -> None:
-        """
-        Atualiza o relógio interno do cliente.
-        """
-        while self.conectado:
-            self.relogio += 1
-            time.sleep(1)
-            print(f'\r{self.relogio} | ', end='', flush=False)
-
     def conectar(self) -> None:
         """
         Conecta o cliente ao servidor.
@@ -41,7 +30,6 @@ class Cliente:
         try:
             self.socket.connect((HOST_SERVIDOR, PORTA_SERVIDOR))
             self.conectado = True
-            threading.Thread(target=self.atualizar_relogio_interno).start()
             print(f"Conectado ao servidor")
         except ConnectionRefusedError:
             print('Erro ao conectar ao servidor')
@@ -58,7 +46,7 @@ class Cliente:
         """
         Encerra o cliente.
         """
-        print('Encerrando...', flush=True)
+        print('Encerrando...')
         self.desconectar()
         exit()
 
@@ -91,7 +79,7 @@ class Cliente:
             resposta = RespostaSucesso.desencapsular(resposta)
         elif match(RespostaErro.pattern, resposta):
             resposta = RespostaErro.desencapsular(resposta)
-        print(resposta.resposta, flush=True)
+        print(resposta.resposta)
 
     @staticmethod
     def criar(args: list) -> Cliente | None:
@@ -109,12 +97,12 @@ class Cliente:
         resposta = cliente.receber_mensagem()
         if match(RespostaErro.pattern, resposta):
             resposta = RespostaErro.desencapsular(resposta)
-            print(resposta.resposta, flush=True)
+            print(resposta.resposta)
             cliente.encerrar()
             return None
         elif match(RespostaSucesso.pattern, resposta):
             resposta = RespostaSucesso.desencapsular(resposta)
-            print(resposta.resposta, flush=True)
+            print(resposta.resposta)
             return cliente
 
     def processar_comando_saldo(self) -> None:
@@ -158,7 +146,7 @@ def main(args: list) -> None:
 
     if cliente is not None:
         while cliente.conectado:
-            print('\n1 - SALDO\n2 - SAQUE\n3 - DEPOSITO\n4 - TRANSFERENCIA\n0 - SAIR\n', flush=True)
+            print('\n1 - SALDO\n2 - SAQUE\n3 - DEPOSITO\n4 - TRANSFERENCIA\n0 - SAIR\n')
             comando = input('Digite o comando: ')
             if isinstance(comando, str) and comando.isdigit():
                 comando = int(comando)
@@ -174,7 +162,7 @@ def main(args: list) -> None:
             elif comando == Operacoes.SAIR.value:
                 break
             else:
-                print('Comando inválido!', flush=True)
+                print('Comando inválido!')
 
         cliente.desconectar()
 

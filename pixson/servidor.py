@@ -30,14 +30,6 @@ class Servidor:
         self.relogio = 0
         self.disponivel = False
 
-    def atualizar_relogio_interno(self) -> None:
-        """
-        Atualiza o relógio interno do cliente.
-        """
-        while self.disponivel:
-            self.relogio += 1
-            time.sleep(1)
-
     def iniciar(self) -> None:
         """
         Inicia o servidor.
@@ -46,7 +38,6 @@ class Servidor:
         self.socket.bind(('', self.porta))
         self.socket.listen(1)
         self.disponivel = True
-        threading.Thread(target=self.atualizar_relogio_interno).start()
         print(f"Servidor iniciado na porta {self.porta}")
 
     def aceitar_conexao(self) -> None:
