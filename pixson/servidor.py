@@ -24,17 +24,17 @@ class Servidor:
             print('Porta já está em uso')
             exit()
 
-        self.port = PORTA_PADRAO
+        self.porta = PORTA_PADRAO
         self.socket = None
         self.clientes = []
         self.relogio = 0
-        threading.Thread(target=self.atualizar_relogio_interno).start()
+        self.disponivel = False
 
     def atualizar_relogio_interno(self) -> None:
         """
         Atualiza o relógio interno do cliente.
         """
-        while True:
+        while self.disponivel:
             self.relogio += 1
             time.sleep(1)
 
@@ -43,9 +43,11 @@ class Servidor:
         Inicia o servidor.
         """
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.bind(('', self.port))
+        self.socket.bind(('', self.porta))
         self.socket.listen(1)
-        print(f"Servidor iniciado na porta {self.port}")
+        self.disponivel = True
+        threading.Thread(target=self.atualizar_relogio_interno).start()
+        print(f"Servidor iniciado na porta {self.porta}")
 
     def aceitar_conexao(self) -> None:
         """
@@ -63,7 +65,7 @@ class Servidor:
         :param cliente_socket: Socket do cliente.
         :type cliente_socket: socket.socket
         """
-        while True:
+        while self.disponivel:
             try:
                 ready_to_read, ready_to_write, in_error = select.select(
                     [cliente_socket, ],
@@ -103,6 +105,7 @@ class Servidor:
         """
         Desconecta o servidor.
         """
+        self.disponivel = False
         for cliente in self.clientes:
             cliente.shutdown(2)
             cliente.close()
@@ -271,10 +274,10 @@ def main():
     """
     Função principal.
     """
-    server = Servidor.criar()
+    servidor = Servidor.criar()
     print('Aguardando conexão...')
-    while True:
-        server.aceitar_conexao()
+    while servidor.disponivel:
+        servidor.aceitar_conexao()
 
 
 if __name__ == '__main__':

@@ -21,32 +21,38 @@ class Cliente:
         """
         self.rg = rg
         self.socket = None
-        self.connected = False
+        self.conectado = False
         self.relogio = 0
-        threading.Thread(target=self.atualizar_relogio_interno).start()
 
     def atualizar_relogio_interno(self) -> None:
         """
         Atualiza o relógio interno do cliente.
         """
-        while True:
+        while self.conectado:
             self.relogio += 1
             time.sleep(1)
+            print(f'\r{self.relogio} | ', end='', flush=False)
 
     def conectar(self) -> None:
         """
         Conecta o cliente ao servidor.
         """
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.connect((HOST_SERVIDOR, PORTA_SERVIDOR))
-        self.connected = True
+        try:
+            self.socket.connect((HOST_SERVIDOR, PORTA_SERVIDOR))
+            self.conectado = True
+            threading.Thread(target=self.atualizar_relogio_interno).start()
+            print(f"Conectado ao servidor")
+        except ConnectionRefusedError:
+            print('Erro ao conectar ao servidor')
+            self.encerrar()
 
     def desconectar(self) -> None:
         """
         Desconecta o cliente do servidor.
         """
         self.socket.close()
-        self.connected = False
+        self.conectado = False
 
     def encerrar(self) -> None:
         """
@@ -151,7 +157,7 @@ def main(args: list) -> None:
     cliente = Cliente.criar(args)
 
     if cliente is not None:
-        while True:
+        while cliente.conectado:
             print('\n1 - SALDO\n2 - SAQUE\n3 - DEPOSITO\n4 - TRANSFERENCIA\n0 - SAIR\n', flush=True)
             comando = input('Digite o comando: ')
             if isinstance(comando, str) and comando.isdigit():
