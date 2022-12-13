@@ -33,7 +33,7 @@ class OperacaoSaldo(Protocolo):
         self.rg = rg
 
     def encapsular(self) -> str:
-        return "op:{}|rg:{}".format(Operacoes.SALDO.value, self.rg)
+        return f"op:{Operacoes.SALDO.value}|rg:{self.rg}"
 
     @staticmethod
     def desencapsular(mensagem: str) -> OperacaoSaldo:
@@ -49,7 +49,7 @@ class OperacaoSaque(Protocolo):
         self.valor = valor
 
     def encapsular(self) -> str:
-        return "op:{}|rg:{}|valor:{}".format(Operacoes.SAQUE.value, self.rg, self.valor)
+        return f"op:{Operacoes.SAQUE.value}|rg:{self.rg}|valor:{self.valor}"
 
     @staticmethod
     def desencapsular(mensagem: str) -> OperacaoSaque:
@@ -65,7 +65,7 @@ class OperacaoDeposito(Protocolo):
         self.valor = valor
 
     def encapsular(self) -> str:
-        return "op:{}|rg:{}|valor:{}".format(Operacoes.DEPOSITO.value, self.rg, self.valor)
+        return f"op:{Operacoes.DEPOSITO.value}|rg:{self.rg}|valor:{self.valor}"
 
     @staticmethod
     def desencapsular(mensagem: str) -> OperacaoDeposito:
@@ -82,12 +82,7 @@ class OperacaoTransferencia(Protocolo):
         self.valor = valor
 
     def encapsular(self) -> str:
-        return "op:{}|rg_origem:{}|rg_destino:{}|valor:{}".format(
-            Operacoes.TRANSFERENCIA.value,
-            self.rg_origem,
-            self.rg_destino,
-            self.valor
-        )
+        return f"op:{Operacoes.TRANSFERENCIA.value}|rg_origem:{self.rg_origem}|rg_destino:{self.rg_destino}|valor:{self.valor}"
 
     @staticmethod
     def desencapsular(mensagem: str) -> OperacaoTransferencia:
@@ -106,7 +101,7 @@ class OperacaoLogin(Protocolo):
         self.rg = rg
 
     def encapsular(self) -> str:
-        return "op:{}|rg:{}".format(Operacoes.LOGIN.value, self.rg)
+        return f"op:{Operacoes.LOGIN.value}|rg:{self.rg}"
 
     @staticmethod
     def desencapsular(mensagem: str) -> OperacaoLogin:
@@ -121,7 +116,7 @@ class RespostaSucesso(Protocolo):
         self.resposta = resposta
 
     def encapsular(self) -> str:
-        return "s:{}|resposta:{}".format(Resposta.OK.value, self.resposta)
+        return f"s:{Resposta.OK.value}|resposta:{self.resposta}"
 
     @staticmethod
     def desencapsular(mensagem: str) -> RespostaSucesso:
@@ -136,7 +131,7 @@ class RespostaErro(Protocolo):
         self.resposta = resposta
 
     def encapsular(self) -> str:
-        return "s:{}|resposta:{}".format(Resposta.ERRO.value, self.resposta)
+        return f"s:{Resposta.ERRO.value}|resposta:{self.resposta}"
 
     @staticmethod
     def desencapsular(mensagem: str) -> RespostaErro:

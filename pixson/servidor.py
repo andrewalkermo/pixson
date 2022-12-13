@@ -1,8 +1,11 @@
 from __future__ import annotations
+
+import time
 import signal
 import socket
 import select
 import threading
+
 from pixson import utils
 from pixson.protocolo import *
 from pixson.conta import Conta
@@ -24,6 +27,16 @@ class Servidor:
         self.port = PORTA_PADRAO
         self.socket = None
         self.clientes = []
+        self.relogio = 0
+        threading.Thread(target=self.atualizar_relogio_interno).start()
+
+    def atualizar_relogio_interno(self) -> None:
+        """
+        Atualiza o relógio interno do cliente.
+        """
+        while True:
+            self.relogio += 1
+            time.sleep(1)
 
     def iniciar(self) -> None:
         """
@@ -32,7 +45,7 @@ class Servidor:
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.bind(('', self.port))
         self.socket.listen(1)
-        print('Servidor iniciado na porta {}'.format(self.port))
+        print(f"Servidor iniciado na porta {self.port}")
 
     def aceitar_conexao(self) -> None:
         """
@@ -40,7 +53,7 @@ class Servidor:
         """
         cliente_socket, cliente_socket_host = self.socket.accept()
         self.clientes.append(cliente_socket)
-        print('Novo cliente conectado {}'.format(cliente_socket_host))
+        print(f"Novo cliente conectado {cliente_socket_host}")
         server_thread = threading.Thread(target=self.processar_operacoes_cliente, args=(cliente_socket,))
         server_thread.start()
 
@@ -124,7 +137,7 @@ def processar_operacao_saldo(cliente_socket, comando: str) -> None:
     with lock:
         conta = Conta.obter_conta(rg=rg)
         if conta:
-            resposta = RespostaSucesso('Saldo: {}'.format(conta.saldo))
+            resposta = RespostaSucesso(f"Saldo: {conta.saldo}")
         else:
             resposta = RespostaErro('Cliente não encontrado')
         cliente_socket.send(resposta.encapsular().encode())

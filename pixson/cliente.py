@@ -1,7 +1,10 @@
 from __future__ import annotations
 import sys
+import time
 import socket
 import signal
+import threading
+
 from pixson import utils
 from pixson.protocolo import *
 
@@ -19,6 +22,16 @@ class Cliente:
         self.rg = rg
         self.socket = None
         self.connected = False
+        self.relogio = 0
+        threading.Thread(target=self.atualizar_relogio_interno).start()
+
+    def atualizar_relogio_interno(self) -> None:
+        """
+        Atualiza o relógio interno do cliente.
+        """
+        while True:
+            self.relogio += 1
+            time.sleep(1)
 
     def conectar(self) -> None:
         """
@@ -39,7 +52,7 @@ class Cliente:
         """
         Encerra o cliente.
         """
-        print('Encerrando...')
+        print('Encerrando...', flush=True)
         self.desconectar()
         exit()
 
@@ -72,7 +85,7 @@ class Cliente:
             resposta = RespostaSucesso.desencapsular(resposta)
         elif match(RespostaErro.pattern, resposta):
             resposta = RespostaErro.desencapsular(resposta)
-        print(resposta.resposta)
+        print(resposta.resposta, flush=True)
 
     @staticmethod
     def criar(args: list) -> Cliente | None:
@@ -90,12 +103,12 @@ class Cliente:
         resposta = cliente.receber_mensagem()
         if match(RespostaErro.pattern, resposta):
             resposta = RespostaErro.desencapsular(resposta)
-            print(resposta.resposta)
+            print(resposta.resposta, flush=True)
             cliente.encerrar()
             return None
         elif match(RespostaSucesso.pattern, resposta):
             resposta = RespostaSucesso.desencapsular(resposta)
-            print(resposta.resposta)
+            print(resposta.resposta, flush=True)
             return cliente
 
     def processar_comando_saldo(self) -> None:
@@ -139,8 +152,11 @@ def main(args: list) -> None:
 
     if cliente is not None:
         while True:
-            print('\n1 - SALDO\n2 - SAQUE\n3 - DEPOSITO\n4 - TRANSFERENCIA\n0 - SAIR\n')
-            comando = int(input('Digite o comando: '))
+            print('\n1 - SALDO\n2 - SAQUE\n3 - DEPOSITO\n4 - TRANSFERENCIA\n0 - SAIR\n', flush=True)
+            comando = input('Digite o comando: ')
+            if isinstance(comando, str) and comando.isdigit():
+                comando = int(comando)
+
             if comando == Operacoes.SALDO.value:
                 cliente.processar_comando_saldo()
             elif comando == Operacoes.SAQUE.value:
@@ -151,6 +167,8 @@ def main(args: list) -> None:
                 cliente.processar_comando_transferencia()
             elif comando == Operacoes.SAIR.value:
                 break
+            else:
+                print('Comando inválido!', flush=True)
 
         cliente.desconectar()
 
