@@ -79,9 +79,7 @@ class Servidor:
             if len(ready_to_read) > 0:
                 mensagem = cliente_socket.recv(utils.TAMANHO_BUFFER_PADRAO).decode()
                 if mensagem:
-                    continuar_escutando = processar_operacao(cliente_socket=cliente_socket, comando=mensagem)
-                    if not continuar_escutando:
-                        return
+                    processar_operacao(cliente_socket=cliente_socket, comando=mensagem)
                 else:
                     break
             if len(ready_to_write) > 0:
@@ -245,14 +243,14 @@ def processar_operacao_login(cliente_socket, comando: str) -> None:
     cliente_socket.send(resposta.encapsular().encode())
 
 
-def processar_operacao(cliente_socket, comando: str) -> bool:
+def processar_operacao(cliente_socket, comando: str) -> None:
     """
     Processa o comando do cliente.
     :param cliente_socket: Socket do cliente.
     :type cliente_socket: socket.socket
     :param comando: Comando recebido do cliente.
     :type comando: str
-    :rtype: bool
+    :rtype: None
     """
     if match(pattern=OperacaoSaldo.pattern, string=comando):
         processar_operacao_saldo(cliente_socket, comando)
@@ -264,7 +262,9 @@ def processar_operacao(cliente_socket, comando: str) -> bool:
         processar_operacao_transferencia(cliente_socket, comando)
     elif match(pattern=OperacaoLogin.pattern, string=comando):
         processar_operacao_login(cliente_socket, comando)
-    return True
+    else:
+        resposta = RespostaErro('Comando não reconhecido')
+        cliente_socket.send(resposta.encapsular().encode())
 
 
 def main():
