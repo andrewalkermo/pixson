@@ -2,7 +2,7 @@ from __future__ import annotations
 from re import match
 from abc import abstractmethod
 
-from pixson.enums import Operacoes, Resposta
+from pixson.recursos.enums import Operacoes, Resposta
 
 
 class Protocolo:

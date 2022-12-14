@@ -4,8 +4,8 @@ import sys
 import socket
 import signal
 
-from pixson import utils
-from pixson.protocolo import *
+from pixson.recursos import utils
+from pixson.recursos.protocolo import *
 
 HOST_SERVIDOR = 'localhost'
 PORTA_SERVIDOR = 5000

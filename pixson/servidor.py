@@ -5,9 +5,9 @@ import socket
 import select
 import threading
 
-from pixson import utils
-from pixson.protocolo import *
-from pixson.conta import Conta
+from pixson.recursos import utils
+from pixson.recursos.protocolo import *
+from pixson.recursos.conta import Conta
 
 PORTA_PADRAO = 5000
 
