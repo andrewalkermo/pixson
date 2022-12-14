@@ -17,7 +17,7 @@ lock = threading.RLock()
 class Servidor:
     def __init__(self) -> None:
         """
-        Contrutor da classe Servidor.
+        Construtor da classe Servidor.
         """
         if not utils.verificar_porta(porta=PORTA_PADRAO):
             print('Porta já está em uso')
