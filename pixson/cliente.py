@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import sys
 import socket
 import signal
@@ -21,6 +22,27 @@ class Cliente:
         self.socket = None
         self.conectado = False
         self.relogio = 0
+
+    def incrementar_relogio(self) -> None:
+        """
+        Incrementa o relógio.
+        """
+        self.relogio += 1
+        print(f'Relógio Lógico Atualizado: {self.relogio}')
+
+    def atualizar_tempo(self, tempo: int) -> None:
+        """
+        Atualiza o relógio com o tempo recebido, se ele for maior que o tempo atual e incrementa o relógio.
+        """
+        self.relogio = max(self.relogio, tempo) + 1
+        print(f'Relógio Lógico Atualizado: {self.relogio}')
+
+    def obter_e_incrementar_tempo(self) -> int:
+        """
+        Incrementa o relógio e retorna o tempo atual.
+        """
+        self.incrementar_relogio()
+        return self.relogio
 
     def conectar(self) -> None:
         """
@@ -62,10 +84,12 @@ class Cliente:
 
     def receber_mensagem(self) -> str:
         """
-        Recebe uma mensagem do servidor.
-        :rtype: object
+        Recebe uma mensagem do servidor e atualiza o relógio lógico.
+        :rtype: str
         """
-        return self.socket.recv(utils.TAMANHO_BUFFER_PADRAO).decode()
+        mensagem = self.socket.recv(utils.TAMANHO_BUFFER_PADRAO).decode()
+        self.atualizar_tempo(tempo=Protocolo.obter_tempo(mensagem))
+        return mensagem
 
     def enviar_mensagem_e_imprimir_resposta(self, mensagem: str) -> None:
         """
@@ -93,7 +117,7 @@ class Cliente:
         cliente.conectar()
         signal.signal(signal.SIGINT, lambda signum, frame: cliente.encerrar())
 
-        cliente.enviar_mensagem(OperacaoLogin(rg).encapsular())
+        cliente.enviar_mensagem(OperacaoLogin(tempo=cliente.obter_e_incrementar_tempo(), rg=rg).encapsular())
         resposta = cliente.receber_mensagem()
         if match(RespostaErro.pattern, resposta):
             resposta = RespostaErro.desencapsular(resposta)
@@ -109,7 +133,7 @@ class Cliente:
         """
         Processa o comando de consulta de saldo.
         """
-        mensagem = OperacaoSaldo(self.rg)
+        mensagem = OperacaoSaldo(self.obter_e_incrementar_tempo(), self.rg)
         self.enviar_mensagem_e_imprimir_resposta(mensagem=mensagem.encapsular())
 
     def processar_comando_saque(self) -> None:
@@ -117,7 +141,7 @@ class Cliente:
         Processa o comando de saque.
         """
         valor = float(input('Digite o valor do saque: '))
-        mensagem = OperacaoSaque(self.rg, valor)
+        mensagem = OperacaoSaque(self.obter_e_incrementar_tempo(), self.rg, valor)
         self.enviar_mensagem_e_imprimir_resposta(mensagem=mensagem.encapsular())
 
     def processar_comando_deposito(self) -> None:
@@ -125,7 +149,7 @@ class Cliente:
         Processa o comando de depósito.
         """
         valor = float(input('Digite o valor do deposito: '))
-        mensagem = OperacaoDeposito(self.rg, valor)
+        mensagem = OperacaoDeposito(self.obter_e_incrementar_tempo(), self.rg, valor)
         self.enviar_mensagem_e_imprimir_resposta(mensagem=mensagem.encapsular())
 
     def processar_comando_transferencia(self) -> None:
@@ -134,7 +158,7 @@ class Cliente:
         """
         rg_destino = str(input('Digite o RG do destinatário: '))
         valor = float(input('Digite o valor da transferência: '))
-        mensagem = OperacaoTransferencia(self.rg, rg_destino, valor)
+        mensagem = OperacaoTransferencia(self.obter_e_incrementar_tempo(), self.rg, rg_destino, valor)
         self.enviar_mensagem_e_imprimir_resposta(mensagem=mensagem.encapsular())
 
 

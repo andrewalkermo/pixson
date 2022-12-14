@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import time
 import signal
 import socket
 import select
@@ -12,7 +11,7 @@ from pixson.conta import Conta
 
 PORTA_PADRAO = 5000
 
-lock = threading.Lock()
+lock = threading.RLock()
 
 
 class Servidor:
@@ -26,9 +25,32 @@ class Servidor:
 
         self.porta = PORTA_PADRAO
         self.socket = None
-        self.clientes = []
         self.relogio = 0
         self.disponivel = False
+
+    def incrementar_relogio(self) -> None:
+        """
+        Incrementa o relógio do servidor.
+        """
+        with lock:
+            self.relogio += 1
+        print(f"Relógio Lógico Atualizado: {self.relogio}")
+
+    def atualizar_tempo(self, tempo: int) -> None:
+        """
+        Atualiza o relógio com o tempo recebido, se ele for maior que o tempo atual e incrementa o relógio.
+        """
+        with lock:
+            self.relogio = max(self.relogio, tempo) + 1
+        print(f'Relógio Lógico Atualizado: {self.relogio}')
+
+    def obter_e_incrementar_tempo(self) -> int:
+        """
+        Incrementa o relógio do servidor e retorna o valor atualizado.
+        :rtype: int
+        """
+        self.incrementar_relogio()
+        return self.relogio
 
     def iniciar(self) -> None:
         """
@@ -45,10 +67,8 @@ class Servidor:
         Aceita uma conexão de um cliente e processa as mensagens dele, numa nova thread.
         """
         cliente_socket, cliente_socket_host = self.socket.accept()
-        self.clientes.append(cliente_socket)
         print(f"Novo cliente conectado {cliente_socket_host}")
-        server_thread = threading.Thread(target=self.processar_operacoes_cliente, args=(cliente_socket,))
-        server_thread.start()
+        threading.Thread(target=self.processar_operacoes_cliente, args=(cliente_socket,)).start()
 
     def processar_operacoes_cliente(self, cliente_socket) -> None:
         """
@@ -72,7 +92,7 @@ class Servidor:
             if len(ready_to_read) > 0:
                 mensagem = cliente_socket.recv(utils.TAMANHO_BUFFER_PADRAO).decode()
                 if mensagem:
-                    processar_operacao(cliente_socket=cliente_socket, comando=mensagem)
+                    self.processar_operacao(cliente_socket=cliente_socket, mensagem=mensagem)
                 else:
                     break
             if len(ready_to_write) > 0:
@@ -81,7 +101,6 @@ class Servidor:
                 break
 
         cliente_socket.close()
-        self.clientes.remove(cliente_socket)
         print('Cliente desconectado')
 
     def encerrar(self) -> None:
@@ -97,9 +116,6 @@ class Servidor:
         Desconecta o servidor.
         """
         self.disponivel = False
-        for cliente in self.clientes:
-            cliente.shutdown(2)
-            cliente.close()
         self.socket.close()
 
     @staticmethod
@@ -114,151 +130,147 @@ class Servidor:
         signal.signal(signal.SIGINT, lambda signum, frame: servidor.encerrar())
         return servidor
 
-
-def processar_operacao_saldo(cliente_socket, comando: str) -> None:
-    """
-    Processa a operação de saldo.
-    :param cliente_socket: Socket do cliente.
-    :type cliente_socket: socket.socket
-    :param comando: Comando recebido do cliente.
-    :type comando: str
-    """
-    solicitacao = OperacaoSaldo.desencapsular(comando)
-    rg = str(solicitacao.rg)
-
-    with lock:
-        conta = Conta.obter_conta(rg=rg)
-        if conta:
-            resposta = RespostaSucesso(f"Saldo: {conta.saldo}")
-        else:
-            resposta = RespostaErro('Cliente não encontrado')
-        cliente_socket.send(resposta.encapsular().encode())
-
-
-def processar_operacao_saque(cliente_socket, comando: str) -> None:
-    """
-    Processa a operação de saque.
-    :param cliente_socket: Socket do cliente.
-    :type cliente_socket: socket.socket
-    :param comando: Comando recebido do cliente.
-    :type comando: str
-    """
-    solicitacao = OperacaoSaque.desencapsular(comando)
-    rg = str(solicitacao.rg)
-
-    with lock:
-        conta = Conta.obter_conta(rg=rg)
-        if conta:
-            if conta.saldo >= solicitacao.valor:
-                conta.sacar(valor=solicitacao.valor)
-                resposta = RespostaSucesso('Saque realizado com sucesso')
-            else:
-                resposta = RespostaErro('Saldo insuficiente')
-        else:
-            resposta = RespostaErro('Cliente não encontrado')
-        cliente_socket.send(resposta.encapsular().encode())
-
-
-def processar_operacao_deposito(cliente_socket, comando: str) -> None:
-    """
-    Processa a operação de depósito.
-    :param cliente_socket: Socket do cliente.
-    :type cliente_socket: socket.socket
-    :param comando: Comando recebido do cliente.
-    :type comando: str
-    """
-    solicitacao = OperacaoDeposito.desencapsular(comando)
-    with lock:
+    def processar_operacao_saldo(self, cliente_socket, mensagem: str) -> None:
+        """
+        Processa a operação de saldo.
+        :param cliente_socket: Socket do cliente.
+        :type cliente_socket: socket.socket
+        :param mensagem: Comando recebido do cliente.
+        :type mensagem: str
+        """
+        solicitacao = OperacaoSaldo.desencapsular(mensagem=mensagem)
         rg = str(solicitacao.rg)
 
+        with lock:
+            conta = Conta.obter_conta(rg=rg)
+            if conta:
+                resposta = RespostaSucesso(tempo=self.obter_e_incrementar_tempo(), resposta=f"Saldo: {conta.saldo}")
+            else:
+                resposta = RespostaErro(tempo=self.obter_e_incrementar_tempo(), resposta='Cliente não encontrado')
+            cliente_socket.send(resposta.encapsular().encode())
+
+    def processar_operacao_saque(self, cliente_socket, mensagem: str) -> None:
+        """
+        Processa a operação de saque.
+        :param cliente_socket: Socket do cliente.
+        :type cliente_socket: socket.socket
+        :param mensagem: Comando recebido do cliente.
+        :type mensagem: str
+        """
+        solicitacao = OperacaoSaque.desencapsular(mensagem=mensagem)
+        rg = str(solicitacao.rg)
+
+        with lock:
+            conta = Conta.obter_conta(rg=rg)
+            if conta:
+                if conta.saldo >= solicitacao.valor:
+                    conta.sacar(valor=solicitacao.valor)
+                    resposta = RespostaSucesso(tempo=self.obter_e_incrementar_tempo(), resposta='Saque realizado com sucesso')
+                else:
+                    resposta = RespostaErro(tempo=self.obter_e_incrementar_tempo(), resposta='Saldo insuficiente')
+            else:
+                resposta = RespostaErro(tempo=self.obter_e_incrementar_tempo(), resposta='Cliente não encontrado')
+            cliente_socket.send(resposta.encapsular().encode())
+
+    def processar_operacao_deposito(self, cliente_socket, mensagem: str) -> None:
+        """
+        Processa a operação de depósito.
+        :param cliente_socket: Socket do cliente.
+        :type cliente_socket: socket.socket
+        :param mensagem: Comando recebido do cliente.
+        :type mensagem: str
+        """
+        solicitacao = OperacaoDeposito.desencapsular(mensagem=mensagem)
+        with lock:
+            rg = str(solicitacao.rg)
+
+            conta = Conta.obter_conta(rg=rg)
+            if conta:
+                conta.depositar(valor=solicitacao.valor)
+                resposta = RespostaSucesso(tempo=self.obter_e_incrementar_tempo(), resposta='Depósito realizado com sucesso')
+            else:
+                resposta = RespostaErro(tempo=self.obter_e_incrementar_tempo(), resposta='Cliente não encontrado')
+
+            cliente_socket.send(resposta.encapsular().encode())
+
+    def processar_operacao_transferencia(self, cliente_socket, mensagem: str) -> None:
+        """
+        Processa a operação de transferência.
+        :param cliente_socket: Socket do cliente.
+        :type cliente_socket: socket.socket
+        :param mensagem: Comando recebido do cliente.
+        :type mensagem: str
+        """
+        solicitacao = OperacaoTransferencia.desencapsular(mensagem=mensagem)
+
+        if solicitacao.rg_origem == solicitacao.rg_destino:
+            resposta = RespostaErro(tempo=self.obter_e_incrementar_tempo(), resposta='Não é possível transferir para a mesma conta')
+            cliente_socket.send(resposta.encapsular().encode())
+            return
+
+        with lock:
+            conta_origem = Conta.obter_conta(rg=solicitacao.rg_origem)
+            conta_destino = Conta.obter_conta(rg=solicitacao.rg_destino)
+
+            if conta_origem is None:
+                resposta = RespostaErro(tempo=self.obter_e_incrementar_tempo(), resposta='Conta de origem não encontrada')
+                cliente_socket.send(resposta.encapsular().encode())
+                return
+            if conta_destino is None:
+                resposta = RespostaErro(tempo=self.obter_e_incrementar_tempo(), resposta='Conta de destino não encontrada')
+                cliente_socket.send(resposta.encapsular().encode())
+                return
+            if conta_origem.saldo < solicitacao.valor:
+                resposta = RespostaErro(tempo=self.obter_e_incrementar_tempo(), resposta='Saldo insuficiente')
+                cliente_socket.send(resposta.encapsular().encode())
+                return
+
+            conta_origem.transferir(conta_destino=conta_destino, valor=solicitacao.valor)
+            resposta = RespostaSucesso(tempo=self.obter_e_incrementar_tempo(), resposta='Transferência realizada com sucesso')
+            cliente_socket.send(resposta.encapsular().encode())
+            return
+
+    def processar_operacao_login(self, cliente_socket, mensagem: str) -> None:
+        """
+        Processa a operação de ‘login’.
+        :param cliente_socket: Socket do cliente.
+        :type cliente_socket: socket.socket
+        :param mensagem: Comando recebido do cliente.
+        :type mensagem: str
+        """
+        solicitacao = OperacaoLogin.desencapsular(mensagem=mensagem)
+        rg = str(solicitacao.rg)
         conta = Conta.obter_conta(rg=rg)
         if conta:
-            conta.depositar(valor=solicitacao.valor)
-            resposta = RespostaSucesso('Depósito realizado com sucesso')
+            resposta = RespostaSucesso(tempo=self.obter_e_incrementar_tempo(), resposta='Login realizado com sucesso')
         else:
-            resposta = RespostaErro('Cliente não encontrado')
-
+            resposta = RespostaErro(tempo=self.obter_e_incrementar_tempo(), resposta='Cliente não encontrado')
         cliente_socket.send(resposta.encapsular().encode())
 
+    def processar_operacao(self, cliente_socket, mensagem: str) -> None:
+        """
+        Atualiza o relógio lógico do servidor e processa a mensagem do cliente.
+        :param cliente_socket: Socket do cliente.
+        :type cliente_socket: socket.socket
+        :param mensagem: Comando recebido do cliente.
+        :type mensagem: str
+        :rtype: None
+        """
+        self.atualizar_tempo(tempo=Protocolo.obter_tempo(mensagem))
 
-def processar_operacao_transferencia(cliente_socket, comando: str) -> None:
-    """
-    Processa a operação de transferência.
-    :param cliente_socket: Socket do cliente.
-    :type cliente_socket: socket.socket
-    :param comando: Comando recebido do cliente.
-    :type comando: str
-    """
-    solicitacao = OperacaoTransferencia.desencapsular(comando)
-
-    if solicitacao.rg_origem == solicitacao.rg_destino:
-        resposta = RespostaErro('Não é possível transferir para a mesma conta')
-        cliente_socket.send(resposta.encapsular().encode())
-        return
-
-    with lock:
-        conta_origem = Conta.obter_conta(rg=solicitacao.rg_origem)
-        conta_destino = Conta.obter_conta(rg=solicitacao.rg_destino)
-
-        if conta_origem is None:
-            resposta = RespostaErro('Conta de origem não encontrada')
+        if match(pattern=OperacaoSaldo.pattern, string=mensagem):
+            self.processar_operacao_saldo(cliente_socket, mensagem)
+        elif match(pattern=OperacaoSaque.pattern, string=mensagem):
+            self.processar_operacao_saque(cliente_socket, mensagem)
+        elif match(pattern=OperacaoDeposito.pattern, string=mensagem):
+            self.processar_operacao_deposito(cliente_socket, mensagem)
+        elif match(pattern=OperacaoTransferencia.pattern, string=mensagem):
+            self.processar_operacao_transferencia(cliente_socket, mensagem)
+        elif match(pattern=OperacaoLogin.pattern, string=mensagem):
+            self.processar_operacao_login(cliente_socket, mensagem)
+        else:
+            resposta = RespostaErro(tempo=self.obter_e_incrementar_tempo(), resposta='Operaçao inválida')
             cliente_socket.send(resposta.encapsular().encode())
-            return
-        if conta_destino is None:
-            resposta = RespostaErro('Conta de destino não encontrada')
-            cliente_socket.send(resposta.encapsular().encode())
-            return
-        if conta_origem.saldo < solicitacao.valor:
-            resposta = RespostaErro('Saldo insuficiente')
-            cliente_socket.send(resposta.encapsular().encode())
-            return
-
-        conta_origem.transferir(conta_destino=conta_destino, valor=solicitacao.valor)
-        resposta = RespostaSucesso('Transferência realizada com sucesso')
-        cliente_socket.send(resposta.encapsular().encode())
-        return
-
-
-def processar_operacao_login(cliente_socket, comando: str) -> None:
-    """
-    Processa a operação de login.
-    :param cliente_socket: Socket do cliente.
-    :type cliente_socket: socket.socket
-    :param comando: Comando recebido do cliente.
-    :type comando: str
-    """
-    solicitacao = OperacaoLogin.desencapsular(comando)
-    rg = str(solicitacao.rg)
-    conta = Conta.obter_conta(rg=rg)
-    if conta:
-        resposta = RespostaSucesso('Login realizado com sucesso')
-    else:
-        resposta = RespostaErro('Cliente não encontrado')
-    cliente_socket.send(resposta.encapsular().encode())
-
-
-def processar_operacao(cliente_socket, comando: str) -> None:
-    """
-    Processa o comando do cliente.
-    :param cliente_socket: Socket do cliente.
-    :type cliente_socket: socket.socket
-    :param comando: Comando recebido do cliente.
-    :type comando: str
-    :rtype: None
-    """
-    if match(pattern=OperacaoSaldo.pattern, string=comando):
-        processar_operacao_saldo(cliente_socket, comando)
-    elif match(pattern=OperacaoSaque.pattern, string=comando):
-        processar_operacao_saque(cliente_socket, comando)
-    elif match(pattern=OperacaoDeposito.pattern, string=comando):
-        processar_operacao_deposito(cliente_socket, comando)
-    elif match(pattern=OperacaoTransferencia.pattern, string=comando):
-        processar_operacao_transferencia(cliente_socket, comando)
-    elif match(pattern=OperacaoLogin.pattern, string=comando):
-        processar_operacao_login(cliente_socket, comando)
-    else:
-        resposta = RespostaErro('Comando não reconhecido')
-        cliente_socket.send(resposta.encapsular().encode())
 
 
 def main():
