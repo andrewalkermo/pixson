@@ -106,12 +106,12 @@ class Cliente:
         print(resposta.resposta)
 
     @staticmethod
-    def criar(args: list) -> Cliente | None:
+    def criar() -> Cliente | None:
         """
         Cria um cliente.
         :rtype: Cliente or None
         """
-        rg = args[1] if len(args) > 1 else str(input('Digite o RG associado a conta: '))
+        rg = sys.argv[1] if len(sys.argv) > 1 else str(input('Digite o RG associado a conta: '))
 
         cliente = Cliente(rg)
         cliente.conectar()
@@ -162,11 +162,11 @@ class Cliente:
         self.enviar_mensagem_e_imprimir_resposta(mensagem=mensagem.encapsular())
 
 
-def main(args: list) -> None:
+def main() -> None:
     """
     Função principal que inicia o cliente e processa os comandos.
     """
-    cliente = Cliente.criar(args)
+    cliente = Cliente.criar()
 
     if cliente is not None:
         while cliente.conectado:
@@ -192,5 +192,5 @@ def main(args: list) -> None:
 
 
 if __name__ == '__main__':
-    main(sys.argv)
+    main()
     exit()

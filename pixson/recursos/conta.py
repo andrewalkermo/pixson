@@ -2,7 +2,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-PASTA_CONTAS = "../contas"
+PASTA_CONTAS = "contas"
 
 
 class Conta:
